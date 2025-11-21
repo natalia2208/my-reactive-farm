@@ -9,21 +9,23 @@ import { getAnimals, createAnimal } from "../services/animalsApi.js";
 // Filtros disponibles
 const TYPES = ["all", "cow", "chicken", "sheep", "pig", "other"];
 const STATUSES = ["all", "healthy", "review", "sick"];
+const CATEGORIES = ["all", "mammal", "bird", "reptile", "other"];
 
 export default function Farm() {
   const [animals, setAnimals] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(null);
 
   // Filtros UI
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
-  // Error de envío desde el formulario (red / servidor)
+  // Error de envío desde el formulario
   const [submitError, setSubmitError] = useState(null);
 
-  // Carga inicial con useEffect
+  // Carga inicial
   useEffect(() => {
     let cancelled = false;
     async function fetchAnimals() {
@@ -44,46 +46,46 @@ export default function Farm() {
     };
   }, []);
 
-  // Crear animal (llamado por AnimalForm)
+  // Crear animal (formulario)
   async function handleCreate(animal) {
     try {
       setSubmitError(null);
       const created = await createAnimal(animal);
-      // Optimistic update (prepend)
       setAnimals((prev) => [created, ...prev]);
       return created;
     } catch (err) {
       setSubmitError("Could not create the animal. Try again.");
-      throw err; // mantiene el flujo del formulario
+      throw err;
     }
   }
 
-  // Derivar lista filtrada + búsqueda
+  // Filtros + búsqueda
   const filteredAnimals = useMemo(() => {
     const q = query.trim().toLowerCase();
     return animals.filter((a) => {
       const byType = typeFilter === "all" || a.type === typeFilter;
       const byStatus = statusFilter === "all" || a.status === statusFilter;
+      const byCategory = categoryFilter === "all" || a.category === categoryFilter;
+
       const byQuery =
         q.length === 0 ||
         a.name?.toLowerCase().includes(q) ||
         a.type?.toLowerCase().includes(q) ||
         String(a.weight).includes(q) ||
         String(a.age).includes(q);
-      return byType && byStatus && byQuery;
+
+      return byType && byStatus && byCategory && byQuery;
     });
-  }, [animals, typeFilter, statusFilter, query]);
+  }, [animals, typeFilter, statusFilter, categoryFilter, query]);
 
   return (
     <Layout title="My Reactive Farm 🐄🌾">
-      {/* Loading / Error de carga */}
       {loading && <Loader message="Fetching animals from the farm…" />}
       {loadError && <Alert variant="error">{loadError}</Alert>}
 
-      {/* Contenido principal */}
       {!loading && !loadError && (
         <div className="space-y-8">
-          {/* Formulario controlado para crear animales */}
+          {/* Form para crear */}
           <section aria-labelledby="create-animal">
             <h2 id="create-animal" className="mb-3 text-xl font-semibold">
               Add new animal
@@ -91,19 +93,16 @@ export default function Farm() {
             <AnimalForm onSubmit={handleCreate} submitError={submitError} />
           </section>
 
-          {/* Filtros y lista */}
+          {/* Lista + Filtros */}
           <section aria-labelledby="animals-list">
             <h2 id="animals-list" className="sr-only">
               Animals
             </h2>
 
             <AnimalList animals={filteredAnimals}>
-              {/* Controls (composición) */}
               <div className="flex flex-wrap items-center gap-3">
+
                 {/* Search */}
-                <label className="sr-only" htmlFor="search">
-                  Search
-                </label>
                 <input
                   id="search"
                   type="search"
@@ -113,10 +112,7 @@ export default function Farm() {
                   className="w-64 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-100"
                 />
 
-                {/* Type filter */}
-                <label className="sr-only" htmlFor="type-filter">
-                  Type
-                </label>
+                {/* Type */}
                 <select
                   id="type-filter"
                   value={typeFilter}
@@ -130,10 +126,7 @@ export default function Farm() {
                   ))}
                 </select>
 
-                {/* Status filter */}
-                <label className="sr-only" htmlFor="status-filter">
-                  Status
-                </label>
+                {/* Status */}
                 <select
                   id="status-filter"
                   value={statusFilter}
@@ -146,6 +139,21 @@ export default function Farm() {
                     </option>
                   ))}
                 </select>
+
+                {/* Category (CORREGIDO, afuera del status) */}
+                <select
+                  id="category-filter"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-600 dark:border-neutral-700 dark:bg-neutral-800 dark:text-gray-100"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+
               </div>
             </AnimalList>
           </section>
